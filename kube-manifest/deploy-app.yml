@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ruby-server
+  namespace: default
+  labels:
+    app: ruby-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ruby-server
+  template:
+    metadata:
+      labels:
+        app: ruby-server
+      name: ruby-server
+    spec:
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 0
+      containers:
+      - image: erlong1507/ruby-server:v1.0
+        imagePullPolicy: Always
+        name: ruby-server
+        ports:
+        - containerPort: 80
+        readinessProbe:
+            exec:
+              command:
+              - sh
+              - -c
+              - '[ $(echo "GET /healthcheck HTTP/1.1\r\nhost: http://localhost\r\nConnection: close\r\n\r\n" | nc localhost 80) = OK ]'
+            initialDelaySeconds: 2
+            periodSeconds: 5               
+        livenessProbe:
+            exec:
+              command:
+              - sh
+              - -c
+              - '[ $(echo "GET /healthcheck HTTP/1.1\r\nhost: http://localhost\r\nConnection: close\r\n\r\n" | nc localhost 80) = OK ]'
+            initialDelaySeconds: 2
+            periodSeconds: 5 
+        resources:
+          limits:
+            cpu: '100m'
+            memory: '100Mi'
+          requests:
+            cpu: '100m'
+            memory: '100Mi'
+        securityContext:
+          runAsNonRoot: true
+          capabilities:
+            drop:
+              - all
+            add:
+              - NET_BIND_SERVICE
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: ruby-server
+  namespace: default
+  labels:
+    app: ruby-server
+spec:
+  type: ClusterIP
+  ports:
+    - targetPort: 80
+      port: 80
+  selector:
+    app: ruby-server
